@@ -28,12 +28,58 @@ function toggleReducer(state, {type, initialState}) {
   }
 }
 
-const CONTROLLED_WITHOU_REQUIRED_PROPS_WARNING_MESSAGE = `An \`on\` prop was provided to useToggle without an \`onChange\` handler. This will render a read-only toggle. If you want it to be imutable, use \`initialOn\`. Otherwise, set either \`onChange\` or \`readOnly\`.`
-
 function log(condition = false, message = '', log = 'error') {
   if (condition) {
     console[log](message)
   }
+}
+
+function useControlledSwitchWarning(
+  controlPropValue,
+  controlPropName,
+  componentName,
+) {
+  const isControlled = controlPropValue != null
+  const {current: wasControlled} = React.useRef(isControlled)
+
+  React.useEffect(() => {
+    log(
+      isControlled && !wasControlled,
+      `${componentName} is changing from uncontrolled to controlled. Check the \`${controlPropName}\` prop.`,
+    )
+    log(
+      !isControlled && wasControlled,
+      `${componentName} is changing from uncontrolled to controlled. Check the \`${controlPropName}\` prop.`,
+    )
+  }, [controlPropName, componentName, isControlled, wasControlled])
+}
+
+function useOnChangeReadOnlyWarning(
+  controlPropValue,
+  controlPropName,
+  componentName,
+  hasOnChange,
+  readOnly,
+  readOnlyProp,
+  initialValueProp,
+  onChangeProp,
+) {
+  const isControlled = controlPropValue != null
+  React.useEffect(() => {
+    log(
+      !hasOnChange && isControlled && !readOnly,
+      `A \`${controlPropName}\` prop was provided to \`${componentName}\` without an \`${onChangeProp}\` handler. This will result in a read-only \`${controlPropName}\` value. If you want it to be mutable, use \`${initialValueProp}\`. Otherwise, set either \`${onChangeProp}\` or \`${readOnlyProp}\`.`,
+    )
+  }, [
+    componentName,
+    controlPropName,
+    isControlled,
+    hasOnChange,
+    readOnly,
+    onChangeProp,
+    initialValueProp,
+    readOnlyProp,
+  ])
 }
 
 function useToggle({
@@ -50,15 +96,17 @@ function useToggle({
   const onIsControlled = controlledOn != null
   const on = onIsControlled ? controlledOn : state.on
 
-  const hasOnChange = typeof onChange === 'function'
-
-  React.useEffect(() => {
-    log(
-      onIsControlled && !hasOnChange && !readOnly,
-      CONTROLLED_WITHOU_REQUIRED_PROPS_WARNING_MESSAGE,
-      'error',
-    )
-  }, [hasOnChange, onIsControlled, readOnly])
+  useControlledSwitchWarning(controlledOn, 'on', 'useToggle')
+  useOnChangeReadOnlyWarning(
+    controlledOn,
+    'on',
+    'useToggle',
+    Boolean(onChange),
+    readOnly,
+    'readOnly',
+    'initialOn',
+    'onChange',
+  )
 
   function dispatchWithOnChange(action) {
     if (!onIsControlled) {
