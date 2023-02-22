@@ -28,11 +28,20 @@ function toggleReducer(state, {type, initialState}) {
   }
 }
 
+const CONTROLLED_WITHOU_REQUIRED_PROPS_WARNING_MESSAGE = `An \`on\` prop was provided to useToggle without an \`onChange\` handler. This will render a read-only toggle. If you want it to be imutable, use \`initialOn\`. Otherwise, set either \`onChange\` or \`readOnly\`.`
+
+function log(condition = false, message = '', log = 'error') {
+  if (condition) {
+    console[log](message)
+  }
+}
+
 function useToggle({
   initialOn = false,
   reducer = toggleReducer,
   onChange,
   on: controlledOn,
+  readOnly = false,
   // 🐨 add an `on` option here
   // 💰 you can alias it to `controlledOn` to avoid "variable shadowing."
 } = {}) {
@@ -40,6 +49,16 @@ function useToggle({
   const [state, dispatch] = React.useReducer(reducer, initialState)
   const onIsControlled = controlledOn != null
   const on = onIsControlled ? controlledOn : state.on
+
+  const hasOnChange = typeof onChange === 'function'
+
+  React.useEffect(() => {
+    log(
+      onIsControlled && !hasOnChange && !readOnly,
+      CONTROLLED_WITHOU_REQUIRED_PROPS_WARNING_MESSAGE,
+      'error',
+    )
+  }, [hasOnChange, onIsControlled, readOnly])
 
   function dispatchWithOnChange(action) {
     if (!onIsControlled) {
@@ -76,8 +95,12 @@ function useToggle({
   }
 }
 
-function Toggle({on: controlledOn, onChange}) {
-  const {on, getTogglerProps} = useToggle({on: controlledOn, onChange})
+function Toggle({on: controlledOn, onChange, readOnly}) {
+  const {on, getTogglerProps} = useToggle({
+    on: controlledOn,
+    onChange,
+    readOnly,
+  })
   const props = getTogglerProps({on})
   return <Switch {...props} />
 }
